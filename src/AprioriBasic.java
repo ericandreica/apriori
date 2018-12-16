@@ -1,12 +1,10 @@
-import javax.sound.midi.SysexMessage;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.regex.Pattern;
 
-public class AprioriBasic {
+class AprioriBasic {
     private List<Set<String>> transactions = new ArrayList<>();
 
     private Map<String, Integer> fkitmes = new HashMap<>();
@@ -17,9 +15,9 @@ public class AprioriBasic {
 
     private double minconf;
 
-    double nrTr;
+    private double nrTr;
 
-    public AprioriBasic(String file, double minsup, double minconf) {
+    AprioriBasic(String file, double minsup, double minconf) {
         int k = 1;
         this.minsup = minsup;
         this.minconf = minconf;
@@ -58,12 +56,12 @@ public class AprioriBasic {
         k--;
         //confidence
         for (Set set : kitemset.get(k).keySet()) {
-            List<Set<String>> subsets = printSubsets(set);
+            List<Set<String>> subsets = getSubsets(set);
             System.out.println(set);
             for (Set<String> subset : subsets) {
                 double nr = kitemset.get(subset.size()).get(subset);
                 double conf = kitemset.get(k).get(set) / nr;
-                if (conf > 0.99) {
+                if (conf > minconf) {
                     Set dset = new HashSet(set);
                     dset.removeAll(subset);
                     System.out.println(subset + "-->" + dset + "---" + conf);
@@ -123,7 +121,7 @@ public class AprioriBasic {
         }
     }
 
-    public List<Set<String>> printSubsets(Set<String> myset) {
+    private List<Set<String>> getSubsets(Set<String> myset) {
 
         ArrayList<Set<String>> sets = new ArrayList<>();
         String[] set = myset.toArray(new String[myset.size()]);
