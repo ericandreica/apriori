@@ -18,56 +18,17 @@ class AprioriBasic {
     private double nrTr;
 
     AprioriBasic(String file, double minsup, double minconf) {
-        int k = 1;
         this.minsup = minsup;
         this.minconf = minconf;
+
         readInput(file);
 
         initItemSet();
 
-        while (!kitemset.get(k).isEmpty()) {
-            showKSet(k);
-            Map<Set<String>, Integer> candMap = new HashMap<>();
-            Map<Set<String>, Integer> imap = kitemset.get(k);
-            for (Set<String> iset : imap.keySet()) {
-                for (Set<String> jset : imap.keySet()) {
-                    Set<String> union = new HashSet<>();
-                    union.addAll(iset);
-                    union.addAll(jset);
-                    if (union.size() == k + 1)
-                        candMap.put(union, 0);
-                }
-            }
-            for (Set set : transactions) {
-                for (Set cset : candMap.keySet())
-                    if (set.containsAll(cset))
-                        candMap.put(cset, candMap.get(cset) + 1);
-            }
-            Map<Set<String>, Integer> kmap = new HashMap<>();
-            for (Set cset : candMap.keySet()) {
-                double sup = candMap.get(cset) / nrTr;
-                if (sup >= minsup) {
-                    kmap.put(cset, candMap.get(cset));
-                }
-            }
-            k++;
-            kitemset.put(k, kmap);
-        }
-        k--;
-        //confidence
-        for (Set set : kitemset.get(k).keySet()) {
-            List<Set<String>> subsets = getSubsets(set);
-            System.out.println(set);
-            for (Set<String> subset : subsets) {
-                double nr = kitemset.get(subset.size()).get(subset);
-                double conf = kitemset.get(k).get(set) / nr;
-                if (conf > minconf) {
-                    Set dset = new HashSet(set);
-                    dset.removeAll(subset);
-                    System.out.println(subset + "-->" + dset + "---" + conf);
-                }
-            }
-        }
+        aprioriBasicAlgorithm();
+
+        //System.out.println("Numar total iteratii: "+nrit);
+
     }
 
     private void readInput(String file) {
@@ -94,12 +55,15 @@ class AprioriBasic {
 
     private void initItemSet() {
         //for each transaction
+        int nrit=0;
         for (Set set : transactions) {
             List<String> list = new ArrayList<String>(set);
             for (String item : list) {
                 fkitmes.put(item, fkitmes.get(item) + 1);
+                nrit++;
             }
         }
+        System.out.println(1+"---"+nrit);
         //add to kitemset
         Map<Set<String>, Integer> fmap = new HashMap<>();
         for (String item : fkitmes.keySet()) {
@@ -108,7 +72,6 @@ class AprioriBasic {
                 Set<String> fitems = new HashSet<>();
                 fitems.add(item);
                 fmap.put(fitems, fkitmes.get(item));
-                //System.out.println(item + "-" + fkitmes.get(item) + "-" + sup);
             }
         }
         kitemset.put(1, fmap);
@@ -118,6 +81,67 @@ class AprioriBasic {
         for (Set set : kitemset.get(k).keySet()) {
             double nr = kitemset.get(k).get(set);
             System.out.println(set + "--" + nr + "--" + nr / nrTr);
+        }
+    }
+
+    private Map<Set<String>, Integer> generateCand(int k) {
+        Map<Set<String>, Integer> candMap = new HashMap<>();
+        Map<Set<String>, Integer> imap = kitemset.get(k);
+        for (Set<String> iset : imap.keySet()) {
+            for (Set<String> jset : imap.keySet()) {
+                Set<String> union = new HashSet<>();
+                union.addAll(iset);
+                union.addAll(jset);
+                if (union.size() == k + 1)
+                    candMap.put(union, 0);
+            }
+        }
+        return candMap;
+    }
+
+    private void aprioriBasicAlgorithm() {
+        int k = 1;
+        while (!kitemset.get(k).isEmpty()) {
+            int nrit=0;
+            //showKSet(k);
+            Map<Set<String>, Integer> candMap = generateCand(k);
+            if (candMap.isEmpty()) {
+                k++;
+                break;
+            }
+            for (Set transaction : transactions) {
+                for (Set cset : candMap.keySet()) {
+                    nrit++;
+                    if (transaction.containsAll(cset))
+                        candMap.put(cset, candMap.get(cset) + 1);
+                }
+            }
+            System.out.println((k+1)+"---"+nrit);
+            Map<Set<String>, Integer> kmap = new HashMap<>();
+            for (Set cset : candMap.keySet()) {
+                double sup = candMap.get(cset) / nrTr;
+                if (sup >= minsup) {
+                    kmap.put(cset, candMap.get(cset));
+                }
+            }
+            k++;
+            kitemset.put(k, kmap);
+        }
+        //confidence
+        for (int i = 2; i < k; i++) {
+            for (Set set : kitemset.get(i).keySet()) {
+                //System.out.println(set);
+                List<Set<String>> subsets = getSubsets(set);
+                for (Set<String> subset : subsets) {
+                    double nr = kitemset.get(subset.size()).get(subset);
+                    double conf = kitemset.get(i).get(set) / nr;
+                    if (conf >= minconf) {
+                        Set dset = new HashSet(set);
+                        dset.removeAll(subset);
+                        //System.out.println(subset + "-->" + dset + "---" + conf);
+                    }
+                }
+            }
         }
     }
 
