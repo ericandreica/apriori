@@ -1,30 +1,32 @@
+import javafx.concurrent.Task;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-class AprioriBasic {
-    //the database
+class AprioriBasicThreads {
     private List<Set<String>> transactions = new ArrayList<>();
 
-    //first k items
     private Map<String, Integer> fkitmes = new HashMap<>();
 
-    //most items sets on each k level
     private Map<Integer, Map<Set<String>, Integer>> kitemset = new HashMap<>();
 
-    //minim level of support
     private double minsup;
 
-    //minim level of confidence
     private double minconf;
 
-    //total number of transactions
     private double nrTr;
 
-    //initialization of apriori
-    AprioriBasic(String file, double minsup, double minconf) {
+    private int k;
+
+    AprioriBasicThreads(String file, double minsup, double minconf) {
         this.minsup = minsup;
         this.minconf = minconf;
 
@@ -32,11 +34,10 @@ class AprioriBasic {
 
         initItemSet();
 
-        aprioriBasicAlgorithm();
+        aprioriRedTranzAlgorithm();
 
     }
 
-    //reading the file
     private void readInput(String file) {
         BufferedReader reader;
         try {
@@ -59,10 +60,9 @@ class AprioriBasic {
         nrTr = transactions.size();
     }
 
-    //init the first 1-itemsets
     private void initItemSet() {
         //for each transaction
-        int nrit=0;
+        int nrit = 0;
         for (Set set : transactions) {
             List<String> list = new ArrayList<String>(set);
             for (String item : list) {
@@ -70,7 +70,7 @@ class AprioriBasic {
                 nrit++;
             }
         }
-        System.out.println(1+"---"+nrit);
+        System.out.println(1 + "---" + nrit);
         //add to kitemset
         Map<Set<String>, Integer> fmap = new HashMap<>();
         for (String item : fkitmes.keySet()) {
@@ -84,7 +84,6 @@ class AprioriBasic {
         kitemset.put(1, fmap);
     }
 
-    //show the k itemeset
     private void showKSet(Integer k) {
         for (Set set : kitemset.get(k).keySet()) {
             double nr = kitemset.get(k).get(set);
@@ -92,7 +91,6 @@ class AprioriBasic {
         }
     }
 
-    //generate the candidate set
     private Map<Set<String>, Integer> generateCand(int k) {
         Map<Set<String>, Integer> candMap = new HashMap<>();
         Map<Set<String>, Integer> imap = kitemset.get(k);
@@ -108,25 +106,29 @@ class AprioriBasic {
         return candMap;
     }
 
-    //apriori algorithm
-    private void aprioriBasicAlgorithm() {
-        int k = 1;
+    private void aprioriRedTranzAlgorithm() {
+        k = 1;
         while (!kitemset.get(k).isEmpty()) {
-            int nrit=0;
+            AtomicInteger nrit = new AtomicInteger();
             //showKSet(k);
             Map<Set<String>, Integer> candMap = generateCand(k);
             if (candMap.isEmpty()) {
                 k++;
                 break;
             }
+            ExecutorService executorService = Executors.newFixedThreadPool(8);
+            List<Callable<Object>> todo = new ArrayList<Callable<Object>>(transactions.size());
             for (Set transaction : transactions) {
-                for (Set cset : candMap.keySet()) {
-                    nrit++;
-                    if (transaction.containsAll(cset))
-                        candMap.put(cset, candMap.get(cset) + 1);
-                }
+                int parseValue = k;
+                todo.add(Executors.callable(() -> nrit.set(parseTransaction(parseValue, nrit.get(), candMap, transaction))));
             }
-            System.out.println((k+1)+"---"+nrit);
+            try {
+                List<Future<Object>> answers = executorService.invokeAll(todo);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            executorService.shutdown();
+            //System.out.println((k + 1) + "---" + nrit);
             Map<Set<String>, Integer> kmap = new HashMap<>();
             for (Set cset : candMap.keySet()) {
                 double sup = candMap.get(cset) / nrTr;
@@ -155,7 +157,16 @@ class AprioriBasic {
         }
     }
 
-    //get subsets of a set
+    private int parseTransaction(int k, int nrit, Map<Set<String>, Integer> candMap, Set transaction) {
+        for (Set cset : candMap.keySet()) {
+            nrit++;
+            if (transaction != null && transaction.containsAll(cset)) {
+                candMap.put(cset, candMap.get(cset) + 1);
+            }
+        }
+        return nrit;
+    }
+
     private List<Set<String>> getSubsets(Set<String> myset) {
 
         ArrayList<Set<String>> sets = new ArrayList<>();

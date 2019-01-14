@@ -125,7 +125,7 @@ class AprioriRedTranzThreads {
                 break;
             }
             List<Set<String>> ntransactions = new ArrayList<>();
-            ExecutorService executorService = Executors.newFixedThreadPool(4);
+            ExecutorService executorService = Executors.newFixedThreadPool(8);
             List<Callable<Object>> todo = new ArrayList<Callable<Object>>(transactions.size());
             for (Set transaction : transactions) {
                 int parseValue = k;
@@ -137,7 +137,7 @@ class AprioriRedTranzThreads {
                 e.printStackTrace();
             }
             executorService.shutdown();
-            System.out.println((k+1)+"---"+nrit);
+            //System.out.println((k+1)+"---"+nrit);
             transactions = ntransactions;
             Map<Set<String>, Integer> kmap = new HashMap<>();
             for (Set cset : candMap.keySet()) {
@@ -160,7 +160,7 @@ class AprioriRedTranzThreads {
                     if (conf >= minconf) {
                         Set dset = new HashSet(set);
                         dset.removeAll(subset);
-                        //System.out.println(subset + "-->" + dset + "---" + conf);
+                  //      System.out.println(subset + "-->" + dset + "---" + conf);
                     }
                 }
             }
